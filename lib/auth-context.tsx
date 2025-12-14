@@ -64,10 +64,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithOAuth = async (provider: "google" | "github") => {
     if (typeof window === "undefined") return;
+    const redirectUrl = `${window.location.origin}/auth/callback`;
+    console.log("🔍 OAuth Redirect URL:", redirectUrl);
+    console.log("🔍 Current Origin:", window.location.origin);
     await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: redirectUrl,
       },
     });
   };

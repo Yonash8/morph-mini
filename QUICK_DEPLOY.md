@@ -45,8 +45,8 @@ After deployment, update Supabase:
 1. Go to your Supabase project: https://app.supabase.com
 2. Navigate to **Authentication** → **URL Configuration**
 3. Add your Vercel URL:
-   - **Site URL**: `https://your-project-name.vercel.app`
-   - **Redirect URLs**: Add `https://your-project-name.vercel.app/auth/callback`
+   - **Site URL**: `https://morph-mini.vercel.app`
+   - **Redirect URLs**: Add `https://morph-mini.vercel.app/auth/callback`
 
 ## Step 4: Run Database Migrations
 

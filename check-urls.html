@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Check URLs</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .url-box {
+            background: white;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .url-box h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .url {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            word-break: break-all;
+            margin: 10px 0;
+        }
+        .copy-btn {
+            background: #0070f3;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .copy-btn:hover {
+            background: #0051cc;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 URL Checker for morph-mini</h1>
+    
+    <div class="url-box">
+        <h3>Current Page Origin</h3>
+        <div class="url" id="origin"></div>
+        <button class="copy-btn" onclick="copyToClipboard('origin')">Copy</button>
+    </div>
+
+    <div class="url-box">
+        <h3>Expected Callback URL</h3>
+        <div class="url" id="callback"></div>
+        <button class="copy-btn" onclick="copyToClipboard('callback')">Copy</button>
+    </div>
+
+    <div class="url-box">
+        <h3>Instructions</h3>
+        <ol>
+            <li>Copy the "Expected Callback URL" above</li>
+            <li>Go to <a href="https://app.supabase.com" target="_blank">Supabase Dashboard</a></li>
+            <li>Navigate to: <strong>Authentication → URL Configuration</strong></li>
+            <li>Paste the callback URL into the <strong>Redirect URLs</strong> field</li>
+            <li>Make sure <strong>Site URL</strong> matches the origin above</li>
+            <li>Click <strong>Save</strong></li>
+        </ol>
+    </div>
+
+    <script>
+        const origin = window.location.origin;
+        const callbackUrl = `${origin}/auth/callback`;
+        
+        document.getElementById('origin').textContent = origin;
+        document.getElementById('callback').textContent = callbackUrl;
+
+        function copyToClipboard(id) {
+            const text = document.getElementById(id).textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Copied to clipboard!');
+            });
+        }
+    </script>
+</body>
+</html>
