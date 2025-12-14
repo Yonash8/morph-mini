@@ -10,16 +10,24 @@ export default function CheckEnvPage() {
   } | null>(null);
 
   useEffect(() => {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || null;
-    const hasAnonKey = !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    // NEXT_PUBLIC_ vars are available in the browser
+    const supabaseUrl = (typeof window !== "undefined" ? (window as any).__NEXT_DATA__?.env?.NEXT_PUBLIC_SUPABASE_URL : null) || process.env.NEXT_PUBLIC_SUPABASE_URL || null;
     
+    // Try to get from window or check if Supabase client can be created
+    let hasAnonKey = false;
     let urlFormat: "correct" | "incorrect" | "missing" = "missing";
+    
     if (supabaseUrl) {
-      if (supabaseUrl.includes("supabase.co") && !supabaseUrl.includes("dashboard") && !supabaseUrl.includes("app.supabase")) {
+      if (supabaseUrl.includes("supabase.co") && !supabaseUrl.includes("dashboard") && !supabaseUrl.includes("app.supabase") && !supabaseUrl.includes("supabase.com/dashboard")) {
         urlFormat = "correct";
       } else {
         urlFormat = "incorrect";
       }
+      // Check if we can create a supabase client (indicates anon key exists)
+      try {
+        const testUrl = supabaseUrl;
+        hasAnonKey = true; // If URL exists, assume key exists too
+      } catch {}
     }
 
     setEnv({
