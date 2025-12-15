@@ -14,7 +14,7 @@ import { useResume } from "@/lib/resume-context";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/lib/toast-context";
 import { Download, LogIn, Save, FileText } from "lucide-react";
-import { createResumeVersion } from "@/lib/supabase/database";
+import { createResumeVersion, getResumeVersions } from "@/lib/supabase/database";
 
 export default function Home() {
   const [isExporting, setIsExporting] = useState(false);
@@ -30,6 +30,7 @@ export default function Home() {
   const resizerRef = useRef<HTMLDivElement>(null);
   const isResizingRef = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const hasLoadedVersionRef = useRef(false); // Track if we've already loaded a version
 
   const generateFilename = (extension: string): string => {
     try {
@@ -204,6 +205,43 @@ export default function Home() {
       setIsSaving(false);
     }
   };
+
+  // Auto-load most recent version when app opens and user is authenticated
+  useEffect(() => {
+    const loadMostRecentVersion = async () => {
+      // Only load if user is authenticated and not loading
+      if (authLoading || !user) {
+        return;
+      }
+
+      // Skip if we've already loaded a version in this session
+      if (hasLoadedVersionRef.current) {
+        return;
+      }
+
+      try {
+        const { data, error } = await getResumeVersions();
+        if (error) {
+          console.error("Error loading versions:", error);
+          // Don't show error toast for initial load - user might not have any versions yet
+          return;
+        }
+
+        // If there are versions, load the most recent one (first in the array since it's ordered by created_at DESC)
+        if (data && data.length > 0) {
+          const mostRecentVersion = data[0];
+          importResumeData(mostRecentVersion.metadata);
+          hasLoadedVersionRef.current = true;
+          console.log("Auto-loaded most recent version:", mostRecentVersion.id);
+        }
+      } catch (error) {
+        console.error("Error loading most recent version:", error);
+        // Silently fail - user can manually load versions if needed
+      }
+    };
+
+    loadMostRecentVersion();
+  }, [authLoading, user, importResumeData]);
 
   // Handle sidebar resizing
   useEffect(() => {
