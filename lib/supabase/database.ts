@@ -143,3 +143,4 @@ export async function getOrCreateUser(): Promise<{ data: User | null; error: any
 
   return { data, error };
 }
+

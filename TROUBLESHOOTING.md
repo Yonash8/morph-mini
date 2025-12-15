@@ -91,3 +91,4 @@ Check the browser's Network tab (F12 → Network):
 - [ ] Callback route `/auth/callback` is accessible
 - [ ] Cleared browser cache
 - [ ] Checked browser console for the actual URL being sent
+

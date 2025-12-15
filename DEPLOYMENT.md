@@ -157,3 +157,4 @@ After deployment, you need to add your production URL to Supabase:
 2. Add your custom domain
 3. Follow DNS configuration instructions
 4. Update Supabase redirect URLs to include your custom domain
+

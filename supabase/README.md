@@ -51,3 +51,4 @@ See `lib/supabase/database.ts` for TypeScript functions to interact with these t
 - `getResumeVersion(id)` - Get a specific resume version
 - `deleteResumeVersion(id)` - Delete a resume version
 - `getOrCreateUser()` - Get or create user record
+

@@ -32,6 +32,8 @@ export interface Project {
   id: string;
   title: string;
   description: string;
+  link?: string;
+  linkText?: string;
 }
 
 export interface ResumeData {
@@ -47,6 +49,7 @@ export interface ResumeData {
   education: Education[];
   experience: JobExperience[];
   projects: Project[];
+  showProjects?: boolean;
   sectionTitles: {
     experience: string;
     projects: string;
@@ -60,6 +63,7 @@ export interface ResumeData {
     targetCompany?: string;
     targetLink?: string;
   };
+  scale?: number; // Manual scale value (0-1), 0.5 is baseline
 }
 
 export const defaultResumeData: ResumeData = {
@@ -162,6 +166,7 @@ export const defaultResumeData: ResumeData = {
       description: "Spearheaded complete redesign of mobile application based on user research insights. Coordinated with design and engineering teams to deliver improved UX that resulted in 50% increase in daily active users and 4.5-star app store rating.",
     },
   ],
+  showProjects: true,
   sectionTitles: {
     experience: "Professional Experience",
     projects: "Key Technical Projects",
@@ -175,4 +180,5 @@ export const defaultResumeData: ResumeData = {
     targetCompany: "",
     targetLink: "",
   },
+  scale: 0.5, // Baseline scale (0 = most compact, 1 = most expanded)
 };

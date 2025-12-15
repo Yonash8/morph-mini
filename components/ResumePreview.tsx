@@ -1,16 +1,17 @@
 "use client";
 
 import { useResume } from "@/lib/resume-context";
+import { densityToScales, applyFitResult } from "@/lib/auto-fit-page";
 import { useEffect, useState, useRef } from "react";
-import { Bold, Italic } from "lucide-react";
+import { Bold, Italic, Plus, Minus } from "lucide-react";
 
 export default function ResumePreview() {
-  const { resumeData, updatePersonalInfo, updateContact, updateExperience, updateProject, updateExpertise, updateTechStack, reorderContactFields, reorderBullets, reorderSections } = useResume();
+  const { resumeData, updatePersonalInfo, updateContact, updateExperience, updateProject, updateExpertise, updateTechStack, reorderContactFields, reorderBullets, reorderSections, setScale } = useResume();
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const [fitLevel, setFitLevel] = useState(0);
-  const [contentFontScale, setContentFontScale] = useState(1.0);
   const [sidebarWidth, setSidebarWidth] = useState(220);
-  const isEditingRef = useRef(false);
+  
+  // Manual scale control (0-1, default 0.5)
+  const currentScale = resumeData.scale ?? 0.5;
   
   // Drag state for contact fields
   const [draggedContactIndex, setDraggedContactIndex] = useState<number | null>(null);
@@ -24,377 +25,41 @@ export default function ResumePreview() {
   const [draggedSectionIndex, setDraggedSectionIndex] = useState<number | null>(null);
   const [dragOverSectionIndex, setDragOverSectionIndex] = useState<number | null>(null);
 
-  // Initialize CSS variables immediately after component mounts
+  // Initialize sidebar width CSS variable
   useEffect(() => {
-    const initVariables = () => {
       const wrapper = wrapperRef.current;
       if (wrapper) {
-        wrapper.style.setProperty("--fit-font-scale", "1");
-        wrapper.style.setProperty("--fit-content-font-scale", "1");
-        wrapper.style.setProperty("--fit-spacing-scale", "1");
-        wrapper.style.setProperty("--fit-line-height", "1.5");
         wrapper.style.setProperty("--fit-sidebar-width", `${sidebarWidth}px`);
       }
-    };
-    
-    // Try immediately, then again after a short delay to ensure DOM is ready
-    initVariables();
-    const timeout = setTimeout(initVariables, 0);
-    
-    return () => clearTimeout(timeout);
   }, [sidebarWidth]);
 
+  // Set bottom margin target (consistent 22mm = ~83px)
+  useEffect(() => {
+    const wrapper = wrapperRef.current;
+    if (wrapper) {
+      // Bottom margin target: 22mm = ~83px at 96 DPI
+      wrapper.style.setProperty("--bottom-margin-target", "83px");
+    }
+  }, []);
+
+  // Apply manual scale with hierarchy when scale or showProjects changes
   useEffect(() => {
     const wrapper = wrapperRef.current;
     if (!wrapper) return;
-
-    let isAdjusting = false; // Prevent infinite loops
-
-    const applyFitLevel = (level: number, contentFontScale?: number, spacingScale?: number) => {
-      // Get current sidebar width from wrapper (always use the CSS variable, not state)
-      const currentSidebarWidth = parseFloat(wrapper.style.getPropertyValue('--fit-sidebar-width')) || 220;
-      // If contentFontScale is provided, use it directly (for dynamic scaling)
-      if (contentFontScale !== undefined) {
-        // Use requestAnimationFrame for smooth transition
-        requestAnimationFrame(() => {
-          wrapper.style.setProperty("--fit-content-font-scale", contentFontScale.toString());
-          setContentFontScale(contentFontScale); // Update state for display
-          // Use provided spacing scale or default to 1
-          wrapper.style.setProperty("--fit-spacing-scale", (spacingScale ?? 1).toString());
-          wrapper.style.setProperty("--fit-line-height", "1.5");
-          // Preserve current sidebar width instead of resetting
-          wrapper.style.setProperty("--fit-sidebar-width", `${currentSidebarWidth}px`);
-        });
-        return;
-      }
-      
-      // Otherwise use predefined levels
-      switch (level) {
-        case -2: // Expanded to fill page
-          wrapper.style.setProperty("--fit-content-font-scale", "1.05");
-          setContentFontScale(1.05);
-          wrapper.style.setProperty("--fit-spacing-scale", "1.1");
-          wrapper.style.setProperty("--fit-line-height", "1.5");
-          wrapper.style.setProperty("--fit-sidebar-width", `${currentSidebarWidth}px`);
-          break;
-        case -1: // Slightly expanded
-          wrapper.style.setProperty("--fit-content-font-scale", "1.02");
-          setContentFontScale(1.02);
-          wrapper.style.setProperty("--fit-spacing-scale", "1.05");
-          wrapper.style.setProperty("--fit-line-height", "1.5");
-          wrapper.style.setProperty("--fit-sidebar-width", `${currentSidebarWidth}px`);
-          break;
-        case 0:
-          wrapper.style.setProperty("--fit-content-font-scale", "1");
-          setContentFontScale(1.0);
-          wrapper.style.setProperty("--fit-spacing-scale", "1");
-          wrapper.style.setProperty("--fit-line-height", "1.5");
-          wrapper.style.setProperty("--fit-sidebar-width", `${currentSidebarWidth}px`);
-          break;
-        case 1:
-          wrapper.style.setProperty("--fit-content-font-scale", "0.98");
-          setContentFontScale(0.98);
-          wrapper.style.setProperty("--fit-spacing-scale", "0.9");
-          wrapper.style.setProperty("--fit-line-height", "1");
-          wrapper.style.setProperty("--fit-sidebar-width", `${currentSidebarWidth}px`);
-          break;
-        case 2:
-          wrapper.style.setProperty("--fit-content-font-scale", "0.96");
-          setContentFontScale(0.96);
-          wrapper.style.setProperty("--fit-spacing-scale", "0.82");
-          wrapper.style.setProperty("--fit-line-height", "1");
-          wrapper.style.setProperty("--fit-sidebar-width", `${currentSidebarWidth}px`);
-          break;
-        case 3:
-          wrapper.style.setProperty("--fit-content-font-scale", "0.93");
-          setContentFontScale(0.93);
-          wrapper.style.setProperty("--fit-spacing-scale", "0.75");
-          wrapper.style.setProperty("--fit-line-height", "1");
-          wrapper.style.setProperty("--fit-sidebar-width", `${currentSidebarWidth}px`);
-          break;
-        case 4:
-          wrapper.style.setProperty("--fit-content-font-scale", "0.90");
-          setContentFontScale(0.90);
-          wrapper.style.setProperty("--fit-spacing-scale", "0.7");
-          wrapper.style.setProperty("--fit-line-height", "1");
-          wrapper.style.setProperty("--fit-sidebar-width", `${currentSidebarWidth}px`);
-          break;
-        case 5:
-          wrapper.style.setProperty("--fit-content-font-scale", "0.87");
-          setContentFontScale(0.87);
-          wrapper.style.setProperty("--fit-spacing-scale", "0.65");
-          wrapper.style.setProperty("--fit-line-height", "1");
-          wrapper.style.setProperty("--fit-sidebar-width", `${currentSidebarWidth}px`);
-          break;
-      }
-    };
-
-    const adjustToFit = () => {
-      if (isAdjusting || !wrapperRef.current) return;
-      
-      // Don't adjust if user is currently editing
-      if (isEditingRef.current) return;
-      
-      const activeElement = document.activeElement;
-      if (activeElement && activeElement.hasAttribute('contenteditable')) return;
-      
-      isAdjusting = true;
-
-      try {
-        const A4_HEIGHT_PX = (297 * 96) / 25.4; // ~1122.52px
-        const wrapper = wrapperRef.current;
-
-        // Get current scale values
-        const currentFontScale = parseFloat(wrapper.style.getPropertyValue('--fit-content-font-scale')) || 
-                                 parseFloat(getComputedStyle(wrapper).getPropertyValue('--fit-content-font-scale')) || 1.0;
-        const currentSpacingScale = parseFloat(wrapper.style.getPropertyValue('--fit-spacing-scale')) || 
-                                    parseFloat(getComputedStyle(wrapper).getPropertyValue('--fit-spacing-scale')) || 1.0;
-
-        // Function to measure content height
-        const measureHeight = (atFontScale: number, atSpacingScale: number) => {
-          // Temporarily apply scales invisibly to measure
-          const origVisibility = wrapper.style.visibility;
-          wrapper.style.visibility = 'hidden';
-          
-          // Save original scale values
-          const origFontScale = wrapper.style.getPropertyValue('--fit-content-font-scale');
-          const origSpacingScale = wrapper.style.getPropertyValue('--fit-spacing-scale');
-          
-          // Apply measurement scales
-          wrapper.style.setProperty('--fit-content-font-scale', atFontScale.toString());
-          wrapper.style.setProperty('--fit-spacing-scale', atSpacingScale.toString());
-          
-          // Save original styles
-          const origOverflow = wrapper.style.overflow;
-          const origHeight = wrapper.style.height;
-          
-          // Allow content to expand naturally
-          wrapper.style.overflow = 'visible';
-          wrapper.style.height = 'auto';
-          
-          // Force reflow
-          void wrapper.offsetHeight;
-          
-          // Measure both the main area and sidebar, take the max
-          const mainEl = wrapper.querySelector('main');
-          const asideEl = wrapper.querySelector('aside');
-          
-          let maxHeight = wrapper.scrollHeight;
-          if (mainEl) {
-            const mainRect = mainEl.getBoundingClientRect();
-            const mainStyles = getComputedStyle(mainEl);
-            const mainHeight = mainRect.height + parseFloat(mainStyles.paddingTop) + parseFloat(mainStyles.paddingBottom);
-            maxHeight = Math.max(maxHeight, mainHeight);
-          }
-          if (asideEl) {
-            const asideRect = asideEl.getBoundingClientRect();
-            maxHeight = Math.max(maxHeight, asideRect.height);
-          }
-          
-          // Restore original scales and styles
-          wrapper.style.setProperty('--fit-content-font-scale', origFontScale || '1');
-          wrapper.style.setProperty('--fit-spacing-scale', origSpacingScale || '1');
-          wrapper.style.overflow = origOverflow;
-          wrapper.style.height = origHeight;
-          wrapper.style.visibility = origVisibility;
-          
-          return maxHeight;
-        };
-
-        // Wait for DOM to be ready
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            if (!wrapperRef.current) {
-              isAdjusting = false;
-              return;
-            }
-
-            // Measure at base scale (1.0) invisibly
-            const naturalHeight = measureHeight(1.0, 1.0);
-            
-            let fontScale = 1.0;
-            let spacingScale = 1.0;
-            
-            // If content fits at base scale, we're done
-            if (naturalHeight <= A4_HEIGHT_PX) {
-              // Only update if scales are different to avoid unnecessary re-renders
-              if (Math.abs(currentFontScale - fontScale) > 0.001 || Math.abs(currentSpacingScale - spacingScale) > 0.001) {
-                applyFitLevel(0, fontScale, spacingScale);
-              }
-              isAdjusting = false;
-              return;
-            }
-            
-            // Calculate required scale factors
-            // Step 1: Try reducing font scale first (min 0.85)
-            fontScale = Math.max(0.85, A4_HEIGHT_PX / naturalHeight);
-            
-            // Step 2: Measure with font scale to see if we need spacing reduction
-            const heightWithFontScale = measureHeight(fontScale, 1.0);
-            if (heightWithFontScale > A4_HEIGHT_PX) {
-              // Need to reduce spacing scale too
-              spacingScale = Math.max(0.5, A4_HEIGHT_PX / heightWithFontScale);
-            }
-            
-            // Only apply if scales are significantly different (larger threshold to reduce adjustments)
-            const fontDiff = Math.abs(currentFontScale - fontScale);
-            const spacingDiff = Math.abs(currentSpacingScale - spacingScale);
-            
-            // Use larger threshold (0.01 instead of 0.001) to reduce micro-adjustments
-            if (fontDiff > 0.01 || spacingDiff > 0.01) {
-              // Use requestIdleCallback for non-urgent updates to avoid blocking
-              if ('requestIdleCallback' in window) {
-                (window as any).requestIdleCallback(() => {
-                  applyFitLevel(0, fontScale, spacingScale);
-                  setFitLevel(0);
-                }, { timeout: 500 });
-              } else {
-                // Fallback for browsers without requestIdleCallback
-                setTimeout(() => {
-                  applyFitLevel(0, fontScale, spacingScale);
-                  setFitLevel(0);
-                }, 100);
-              }
-            }
-            
-            isAdjusting = false;
-          });
-        });
-      } catch (error) {
-        console.error("Error in adjustToFit:", error);
-        isAdjusting = false;
-      }
-    };
-
-    // Initial adjustment
-    const timeoutId = setTimeout(() => {
-      if (!isEditingRef.current) {
-        adjustToFit();
-      }
-    }, 500);
     
-    // Expose adjustToFit for manual calls
-    (window as any).adjustToFit = adjustToFit;
+    const scales = densityToScales(currentScale, resumeData.showProjects ?? true);
+    applyFitResult(wrapper, scales);
+  }, [currentScale, resumeData.showProjects]);
 
-    // Watch for content changes - but NOT attribute changes (to avoid infinite loops)
-    let debounceTimer: NodeJS.Timeout;
-    let observer: MutationObserver | null = null;
-    
-    const createObserver = () => {
-      if (observer) {
-        observer.disconnect();
-        observer = null;
-      }
-      
-      if (isEditingRef.current) {
-        return; // Don't create observer if editing
-      }
-      
-      observer = new MutationObserver((mutations) => {
-        // Completely skip if editing
-        if (isEditingRef.current) {
-          return;
-        }
-        
-        // Skip mutations from contentEditable editing (to prevent jumping)
-        const isContentEditableChange = mutations.some(mutation => {
-          const target = mutation.target as HTMLElement;
-          return target.hasAttribute('contenteditable') || 
-                 target.closest('[contenteditable]') !== null;
-        });
-        
-        if (isContentEditableChange) {
-          return; // Skip auto-fit during editing
-        }
-        
-        clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => {
-          if (!isEditingRef.current && wrapperRef.current) {
-            // Use requestIdleCallback for smoother, non-blocking adjustments
-            if ('requestIdleCallback' in window) {
-              (window as any).requestIdleCallback(() => {
-                adjustToFit();
-              }, { timeout: 1000 });
-            } else {
-              adjustToFit();
-            }
-          }
-        }, 3000); // Increased debounce from 2000ms to 3000ms
-      });
+  const handleScaleIncrease = () => {
+    const newScale = Math.min(1, currentScale + 0.05);
+    setScale(newScale);
+  };
 
-      if (wrapper && !isEditingRef.current) {
-        observer.observe(wrapper, {
-          childList: true,
-          subtree: true,
-          characterData: true,
-          // attributes: true, // REMOVED - this was causing infinite loops
-        });
-      }
-    };
-    
-    createObserver();
-    
-    // Handle focus/blur on contentEditable elements
-    const handleFocus = () => {
-      isEditingRef.current = true;
-      if (observer) {
-        observer.disconnect();
-        observer = null;
-      }
-    };
-    
-    const handleBlur = () => {
-      isEditingRef.current = false;
-      // Delay observer recreation and adjustment to avoid immediate jumps
-      setTimeout(() => {
-        if (!isEditingRef.current) {
-          createObserver();
-          // Delay adjustment after blur to let content settle
-          setTimeout(() => {
-            if (!isEditingRef.current && wrapperRef.current) {
-              if ('requestIdleCallback' in window) {
-                (window as any).requestIdleCallback(() => {
-                  adjustToFit();
-                }, { timeout: 500 });
-              } else {
-                adjustToFit();
-              }
-            }
-          }, 500);
-        }
-      }, 1500); // Increased delay from 1000ms to 1500ms
-    };
-    
-    // Add event listeners to all contentEditable elements
-    const contentEditables = wrapper?.querySelectorAll('[contenteditable]');
-    contentEditables?.forEach(el => {
-      el.addEventListener('focus', handleFocus);
-      el.addEventListener('blur', handleBlur);
-    });
-
-    const handleResize = () => {
-      clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => {
-        adjustToFit();
-      }, 200);
-    };
-
-    window.addEventListener("resize", handleResize);
-
-    return () => {
-      clearTimeout(timeoutId);
-      clearTimeout(debounceTimer);
-      if (observer) {
-        observer.disconnect();
-      }
-      const contentEditables = wrapper?.querySelectorAll('[contenteditable]');
-      contentEditables?.forEach(el => {
-        el.removeEventListener('focus', handleFocus);
-        el.removeEventListener('blur', handleBlur);
-      });
-      window.removeEventListener("resize", handleResize);
-    };
-  }, [resumeData, sidebarWidth]);
+  const handleScaleDecrease = () => {
+    const newScale = Math.max(0, currentScale - 0.05);
+    setScale(newScale);
+  };
 
   const [editingElement, setEditingElement] = useState<HTMLElement | null>(null);
   const [showFormatToolbar, setShowFormatToolbar] = useState(false);
@@ -511,6 +176,30 @@ export default function ResumePreview() {
           </button>
         </div>
       )}
+      {/* Scale Controls */}
+      <div className="flex items-center justify-center gap-2 mb-4">
+        <button
+          type="button"
+          onClick={handleScaleDecrease}
+          disabled={currentScale <= 0}
+          className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm flex items-center gap-1"
+          title="Decrease scale (make more compact)"
+        >
+          <Minus className="w-4 h-4" />
+        </button>
+        <span className="text-sm text-gray-600 min-w-[60px] text-center">
+          {Math.round(currentScale * 100)}%
+        </span>
+        <button
+          type="button"
+          onClick={handleScaleIncrease}
+          disabled={currentScale >= 1}
+          className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm flex items-center gap-1"
+          title="Increase scale (make more expanded)"
+        >
+          <Plus className="w-4 h-4" />
+        </button>
+      </div>
       <div 
         id="resume-preview" 
         ref={wrapperRef} 
@@ -549,10 +238,14 @@ export default function ResumePreview() {
           --sidebar-width: var(--fit-sidebar-width, 220px);
           --page-padding: 45px;
           --fit-font-scale: 1;
+          --fit-header-scale: 1;
           --fit-content-font-scale: 1;
-          --fit-spacing-scale: 1;
-          --fit-line-height: 1.5;
+          --fit-main-spacing-scale: 1;
+          --fit-sidebar-spacing-scale: 1;
+          --fit-work-expansion-scale: 1;
+          --fit-line-height: 1.45;
           --fit-sidebar-width: 220px;
+          --bottom-margin-target: 83px;
         }
 
         .resume-wrapper {
@@ -599,7 +292,10 @@ export default function ResumePreview() {
 
         aside {
           background-color: var(--bg-sidebar);
-          padding: calc(var(--page-padding) * var(--fit-spacing-scale)) calc(24px * var(--fit-spacing-scale));
+          padding-top: calc(var(--page-padding) * var(--fit-sidebar-spacing-scale));
+          padding-bottom: calc(var(--page-padding) * var(--fit-sidebar-spacing-scale));
+          padding-left: calc(28px * var(--fit-sidebar-spacing-scale));
+          padding-right: calc(28px * var(--fit-sidebar-spacing-scale));
           border-right: 1px solid var(--border-color);
           overflow: visible;
           height: 100%;
@@ -609,7 +305,7 @@ export default function ResumePreview() {
         }
 
         .sidebar-group {
-          margin-bottom: calc(40px * var(--fit-spacing-scale));
+          margin-bottom: calc(max(30px, 38px * var(--fit-sidebar-spacing-scale)));
           flex-shrink: 0;
         }
 
@@ -625,19 +321,19 @@ export default function ResumePreview() {
 
         .sidebar-title {
           font-family: 'Manrope', sans-serif;
-          font-size: calc(13px * var(--fit-content-font-scale));
+          font-size: calc(13px * var(--fit-header-scale));
           font-weight: 800;
           text-transform: uppercase;
-          letter-spacing: calc(1.2px * var(--fit-content-font-scale));
+          letter-spacing: calc(1.2px * var(--fit-header-scale));
           color: var(--text-primary);
-          margin-bottom: calc(15px * var(--fit-spacing-scale));
+          margin-bottom: calc(18px * var(--fit-sidebar-spacing-scale));
           display: block;
-          border-bottom: calc(2px * var(--fit-content-font-scale)) solid #ddd;
-          padding-bottom: calc(5px * var(--fit-spacing-scale));
+          border-bottom: calc(2px * var(--fit-header-scale)) solid #ddd;
+          padding-bottom: calc(6px * var(--fit-sidebar-spacing-scale));
         }
 
         .contact-item {
-          margin-bottom: calc(12px * var(--fit-spacing-scale));
+          margin-bottom: calc(max(10px, 14px));
           cursor: move;
           transition: background-color 0.2s, opacity 0.2s;
           border-radius: 3px;
@@ -663,7 +359,7 @@ export default function ResumePreview() {
           font-weight: 700;
           color: #666;
           text-transform: uppercase;
-          margin-bottom: calc(2px * var(--fit-spacing-scale));
+          margin-bottom: calc(2px * var(--fit-sidebar-spacing-scale));
         }
 
         .contact-value {
@@ -695,36 +391,59 @@ export default function ResumePreview() {
         }
 
         ul.skill-list li {
-          margin-bottom: calc(8px * var(--fit-spacing-scale));
+          margin-bottom: calc(max(6px, 10px));
           color: var(--text-secondary);
           font-weight: 500;
           font-size: calc(13px * var(--fit-content-font-scale));
         }
 
         main {
-          padding: calc(var(--page-padding) * var(--fit-spacing-scale)) calc(45px * var(--fit-spacing-scale));
+          padding-top: calc(var(--page-padding) * var(--fit-main-spacing-scale));
+          padding-bottom: var(--bottom-margin-target);
+          padding-left: calc(45px * var(--fit-main-spacing-scale));
+          padding-right: calc(75px * var(--fit-main-spacing-scale));
           overflow: visible;
           user-select: text;
           -webkit-user-select: text;
+          /* Flexbox for natural space distribution */
+          display: flex;
+          flex-direction: column;
+          height: 100%;
+        }
+
+        /* Bottom spacer absorbs ALL remaining vertical space - eliminates bottom whitespace */
+        .main-content-spacer {
+          flex-grow: 1;
+          flex-shrink: 0;
+          min-height: 0;
+        }
+        
+        /* Section spacer between header and content */
+        .section-spacer {
+          flex-grow: 0;
+          flex-shrink: 1;
+          min-height: 0px;
+          max-height: 0px;
+          display: none;
         }
 
         header {
-          margin-bottom: calc(35px * var(--fit-spacing-scale));
-          margin-top: calc(-8px * var(--fit-spacing-scale));
+          margin-bottom: 0;
+          margin-top: calc(-8px * var(--fit-main-spacing-scale));
         }
 
         header .summary {
-          margin-top: calc(18px * var(--fit-spacing-scale));
+          margin-top: calc(max(12px, 16px * var(--fit-main-spacing-scale)));
         }
 
         h1 {
           font-family: 'Manrope', sans-serif;
-          font-size: 38px;
+          font-size: calc(38px * var(--fit-header-scale));
           font-weight: 800;
           letter-spacing: -0.5px;
           color: #333333;
           line-height: 1;
-          margin-bottom: calc(12px * var(--fit-spacing-scale));
+          margin-bottom: calc(12px * var(--fit-main-spacing-scale));
         }
 
         #resume-preview,
@@ -809,7 +528,7 @@ export default function ResumePreview() {
           max-width: 95%;
           line-height: 1.35;
           text-align: left;
-          margin-top: calc(16px * var(--fit-spacing-scale));
+          margin-top: calc(max(12px, 16px * var(--fit-main-spacing-scale)));
           margin-bottom: 0;
         }
 
@@ -818,6 +537,8 @@ export default function ResumePreview() {
           cursor: move;
           border-radius: 4px;
           position: relative;
+          page-break-inside: avoid;
+          break-inside: avoid;
         }
 
         .resume-section:hover {
@@ -837,21 +558,41 @@ export default function ResumePreview() {
         .resume-section:first-of-type h2.section-header {
           margin-top: 0;
         }
+        
+        /* Reduce spacing for first section (Professional Experience) after summary */
+        .resume-section:first-of-type:has(.job-card) h2.section-header {
+          margin-top: 0;
+        }
 
         h2.section-header {
           font-family: 'Manrope', sans-serif;
-          font-size: calc(14px * var(--fit-content-font-scale));
+          font-size: calc(16px * var(--fit-header-scale));
           font-weight: 800;
           text-transform: uppercase;
-          letter-spacing: calc(1.5px * var(--fit-content-font-scale));
+          letter-spacing: calc(1.5px * var(--fit-header-scale));
           color: var(--text-primary);
-          padding-bottom: calc(4px * var(--fit-spacing-scale));
-          margin-top: calc(35px * var(--fit-spacing-scale));
-          margin-bottom: calc(12px * var(--fit-spacing-scale));
+          padding-bottom: calc(4px * var(--fit-main-spacing-scale));
+          margin-top: calc(max(18px, 28px * var(--fit-main-spacing-scale)));
+          margin-bottom: calc(max(10px, 12px * var(--fit-main-spacing-scale)));
+          page-break-after: avoid;
+          break-after: avoid;
+        }
+        
+        /* Remove padding-bottom for first section header to reduce space */
+        .resume-section:first-of-type:has(.job-card) h2.section-header {
+          padding-bottom: 0;
+        }
+        
+        /* Work experience section uses expansion scale for spacing */
+        .resume-section:has(.job-card) h2.section-header {
+          margin-top: calc(28px * var(--fit-work-expansion-scale));
+          margin-bottom: calc(12px * var(--fit-work-expansion-scale));
         }
 
         .job-card {
-          margin-bottom: calc(20px * var(--fit-spacing-scale));
+          margin-bottom: calc(20px * var(--fit-work-expansion-scale));
+          page-break-inside: avoid;
+          break-inside: avoid;
         }
 
         .job-top-row {
@@ -865,11 +606,11 @@ export default function ResumePreview() {
 
         .company-name {
           font-weight: 800;
-          font-size: calc(16px * var(--fit-content-font-scale));
+          font-size: calc(15px * var(--fit-header-scale));
           color: #000000;
           display: block;
-          margin-bottom: calc(6px * var(--fit-spacing-scale));
-          letter-spacing: calc(-0.2px * var(--fit-content-font-scale));
+          margin-bottom: calc(8px * var(--fit-work-expansion-scale));
+          letter-spacing: calc(-0.2px * var(--fit-header-scale));
         }
 
         .job-title-text {
@@ -879,7 +620,7 @@ export default function ResumePreview() {
           color: #222222;
           display: block;
           font-size: calc(14px * var(--fit-content-font-scale));
-          margin-bottom: calc(6px * var(--fit-spacing-scale));
+          margin-bottom: calc(8px * var(--fit-work-expansion-scale));
         }
 
         .job-date {
@@ -888,12 +629,14 @@ export default function ResumePreview() {
           color: #444444;
           text-align: right;
           white-space: nowrap;
-          padding-top: calc(2px * var(--fit-spacing-scale));
+          padding-top: calc(2px * var(--fit-main-spacing-scale));
           min-width: calc(120px * var(--fit-content-font-scale));
         }
 
         .role-entry {
-          margin-bottom: calc(16px * var(--fit-spacing-scale));
+          margin-bottom: calc(16px * var(--fit-work-expansion-scale));
+          page-break-inside: avoid;
+          break-inside: avoid;
         }
 
         .role-entry:last-child {
@@ -904,7 +647,8 @@ export default function ResumePreview() {
           display: flex;
           justify-content: space-between;
           align-items: baseline;
-          margin-bottom: calc(8px * var(--fit-spacing-scale));
+          margin-bottom: calc(10px * var(--fit-work-expansion-scale));
+          width: 100%;
         }
 
         .role-header .job-title-text {
@@ -923,12 +667,13 @@ export default function ResumePreview() {
           padding-left: 0;
           list-style: none;
           margin: 0;
+          width: 100%;
         }
 
         ul.job-bullets li {
           position: relative;
           padding-left: calc(18px * var(--fit-content-font-scale));
-          margin-bottom: calc(10px * var(--fit-spacing-scale));
+          margin-bottom: calc(12px * var(--fit-work-expansion-scale));
           color: #333333;
           line-height: 1.4;
           word-wrap: break-word;
@@ -974,32 +719,53 @@ export default function ResumePreview() {
         }
 
         .project-card {
-          margin-bottom: calc(16px * var(--fit-spacing-scale));
+          margin-bottom: calc(max(12px, 16px * var(--fit-main-spacing-scale)));
+          page-break-inside: avoid;
+          break-inside: avoid;
         }
 
         .project-title {
           font-weight: 700;
           font-size: calc(14px * var(--fit-content-font-scale));
           color: var(--text-primary);
-          margin-bottom: calc(6px * var(--fit-spacing-scale));
+          margin-bottom: calc(6px * var(--fit-main-spacing-scale));
           display: block;
         }
 
-        .project-description {
+        .project-description-row {
           position: relative;
           padding-left: calc(18px * var(--fit-content-font-scale));
-          color: var(--text-secondary);
           line-height: 1.4;
-          margin-bottom: calc(10px * var(--fit-spacing-scale));
+          margin-bottom: calc(6px * var(--fit-main-spacing-scale));
         }
 
-        .project-description::before {
+        .project-description-row::before {
           content: "▪";
           position: absolute;
           left: 0;
           top: calc(1px * var(--fit-content-font-scale));
           color: #111;
           font-size: calc(14px * var(--fit-content-font-scale));
+        }
+
+        .project-description {
+          color: var(--text-secondary);
+          display: inline;
+        }
+
+        .project-link {
+          display: inline;
+          font-size: calc(12px * var(--fit-content-font-scale));
+          color: #2563eb;
+          text-decoration: none;
+          font-weight: 600;
+          margin-left: 6px;
+          transition: color 0.2s;
+        }
+
+        .project-link:hover {
+          color: #1d4ed8;
+          text-decoration: underline;
         }
 
         @media print {
@@ -1206,21 +972,8 @@ export default function ResumePreview() {
             contentEditable
             spellCheck={true}
             suppressContentEditableWarning
-            onFocus={() => { isEditingRef.current = true; }}
             onBlur={(e) => {
-              isEditingRef.current = false;
               updatePersonalInfo({ name: e.currentTarget.innerHTML || "" });
-              setTimeout(() => {
-                if ((window as any).adjustToFit) {
-                  if ('requestIdleCallback' in window) {
-                    (window as any).requestIdleCallback(() => {
-                      (window as any).adjustToFit();
-                    }, { timeout: 800 });
-                  } else {
-                    (window as any).adjustToFit();
-                  }
-                }
-              }, 600);
             }}
             onKeyDown={(e) => {
               if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
@@ -1241,21 +994,8 @@ export default function ResumePreview() {
             contentEditable
             spellCheck={true}
             suppressContentEditableWarning
-            onFocus={() => { isEditingRef.current = true; }}
             onBlur={(e) => {
-              isEditingRef.current = false;
               updatePersonalInfo({ summary: e.currentTarget.innerHTML || "" });
-              setTimeout(() => {
-                if ((window as any).adjustToFit) {
-                  if ('requestIdleCallback' in window) {
-                    (window as any).requestIdleCallback(() => {
-                      (window as any).adjustToFit();
-                    }, { timeout: 800 });
-                  } else {
-                    (window as any).adjustToFit();
-                  }
-                }
-              }, 800);
             }}
             onKeyDown={(e) => {
               if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
@@ -1271,6 +1011,9 @@ export default function ResumePreview() {
             dangerouslySetInnerHTML={{ __html: resumeData.personalInfo.summary }}
           />
         </header>
+
+        {/* Flexible spacer between header and sections */}
+        <div className="section-spacer" aria-hidden="true" />
 
         {resumeData.sectionOrder.map((sectionType, sectionIdx) => {
           const isDraggingSection = draggedSectionIndex === sectionIdx;
@@ -1331,18 +1074,11 @@ export default function ResumePreview() {
                         contentEditable
                         spellCheck={true}
                         suppressContentEditableWarning
-                        onFocus={() => { isEditingRef.current = true; }}
                         onBlur={(e) => {
-                          isEditingRef.current = false;
                           const newCompany = e.currentTarget.innerHTML || "";
                           jobs.forEach((job) => {
                             updateExperience(job.id, { company: newCompany });
                           });
-                          setTimeout(() => {
-                            if ((window as any).adjustToFit) {
-                              (window as any).adjustToFit();
-                            }
-                          }, 500);
                         }}
                         onKeyDown={(e) => {
                           if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
@@ -1385,14 +1121,9 @@ export default function ResumePreview() {
                                   spellCheck={true}
                                   suppressContentEditableWarning
                                   onDragStart={(e) => {
-                                    // Only allow drag if not currently editing
-                                    if (!isEditingRef.current) {
                                       setDraggedPreviewBullet({ expId: job.id, index: idx });
                                       e.dataTransfer.effectAllowed = "move";
                                       e.dataTransfer.setData("text/html", "");
-                                    } else {
-                                      e.preventDefault();
-                                    }
                                   }}
                                   onDragOver={(e) => {
                                     e.preventDefault();
@@ -1416,23 +1147,10 @@ export default function ResumePreview() {
                                     setDraggedPreviewBullet(null);
                                     setDragOverPreviewBullet(null);
                                   }}
-                                  onFocus={() => { isEditingRef.current = true; }}
                                   onBlur={(e) => {
-                                    isEditingRef.current = false;
                                     const newBullets = [...job.bullets];
                                     newBullets[idx] = e.currentTarget.innerHTML || "";
                                     updateExperience(job.id, { bullets: newBullets });
-                                    setTimeout(() => {
-                                      if ((window as any).adjustToFit) {
-                                        if ('requestIdleCallback' in window) {
-                                          (window as any).requestIdleCallback(() => {
-                                            (window as any).adjustToFit();
-                                          }, { timeout: 800 });
-                                        } else {
-                                          (window as any).adjustToFit();
-                                        }
-                                      }
-                                    }, 800);
                                   }}
                                   onKeyDown={(e) => {
                                     if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
@@ -1450,7 +1168,7 @@ export default function ResumePreview() {
                                     WebkitUserSelect: "text", 
                                     MozUserSelect: "text",
                                     msUserSelect: "text",
-                                    cursor: isEditingRef.current ? "text" : "move",
+                                    cursor: "text",
                                     pointerEvents: "auto"
                                   }}
                                   dangerouslySetInnerHTML={{ __html: bullet }}
@@ -1467,7 +1185,7 @@ export default function ResumePreview() {
                 })()}
               </div>
             );
-          } else if (sectionType === 'projects' && resumeData.projects.length > 0) {
+          } else if (sectionType === 'projects' && (resumeData.showProjects ?? true) && resumeData.projects.length > 0 && resumeData.projects.some(p => p.title?.trim() || p.description?.trim())) {
             return (
               <div
                 key="projects-section"
@@ -1509,21 +1227,8 @@ export default function ResumePreview() {
                   contentEditable
                   spellCheck={true}
                   suppressContentEditableWarning
-                  onFocus={() => { isEditingRef.current = true; }}
                   onBlur={(e) => {
-                    isEditingRef.current = false;
                     updateProject(project.id, { title: e.currentTarget.innerHTML || "" });
-                    setTimeout(() => {
-                      if ((window as any).adjustToFit) {
-                        if ('requestIdleCallback' in window) {
-                          (window as any).requestIdleCallback(() => {
-                            (window as any).adjustToFit();
-                          }, { timeout: 800 });
-                        } else {
-                          (window as any).adjustToFit();
-                        }
-                      }
-                    }, 800);
                   }}
                   onKeyDown={(e) => {
                     if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
@@ -1538,40 +1243,39 @@ export default function ResumePreview() {
                   style={{ outline: "none", userSelect: "text", WebkitUserSelect: "text", cursor: "text" }}
                   dangerouslySetInnerHTML={{ __html: project.title }}
                 />
-                <p
-                  className="project-description"
-                  contentEditable
-                  spellCheck={true}
-                  suppressContentEditableWarning
-                  onFocus={() => { isEditingRef.current = true; }}
-                  onBlur={(e) => {
-                    isEditingRef.current = false;
-                    updateProject(project.id, { description: e.currentTarget.innerHTML || "" });
-                    setTimeout(() => {
-                      if ((window as any).adjustToFit) {
-                        if ('requestIdleCallback' in window) {
-                          (window as any).requestIdleCallback(() => {
-                            (window as any).adjustToFit();
-                          }, { timeout: 800 });
-                        } else {
-                          (window as any).adjustToFit();
-                        }
+                <div className="project-description-row">
+                  <span
+                    className="project-description"
+                    contentEditable
+                    spellCheck={true}
+                    suppressContentEditableWarning
+                    onBlur={(e) => {
+                      updateProject(project.id, { description: e.currentTarget.innerHTML || "" });
+                    }}
+                    onKeyDown={(e) => {
+                      if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
+                        e.preventDefault();
+                        document.execCommand('bold', false);
                       }
-                    }, 800);
-                  }}
-                  onKeyDown={(e) => {
-                    if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
-                      e.preventDefault();
-                      document.execCommand('bold', false);
-                    }
-                    if ((e.ctrlKey || e.metaKey) && (e.key === 'i' || e.key === 'I')) {
-                      e.preventDefault();
-                      document.execCommand('italic', false);
-                    }
-                  }}
-                  style={{ outline: "none", userSelect: "text", WebkitUserSelect: "text", cursor: "text" }}
-                  dangerouslySetInnerHTML={{ __html: project.description }}
-                />
+                      if ((e.ctrlKey || e.metaKey) && (e.key === 'i' || e.key === 'I')) {
+                        e.preventDefault();
+                        document.execCommand('italic', false);
+                      }
+                    }}
+                    style={{ outline: "none", userSelect: "text", WebkitUserSelect: "text", cursor: "text" }}
+                    dangerouslySetInnerHTML={{ __html: project.description }}
+                  />
+                  {project.link && project.linkText && (
+                    <a 
+                      href={project.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="project-link"
+                    >
+                      {project.linkText}
+                    </a>
+                  )}
+                </div>
                   </div>
                 ))}
               </div>
@@ -1579,6 +1283,8 @@ export default function ResumePreview() {
           }
           return null;
         })}
+        {/* Spacer that grows to fill remaining vertical space - eliminates bottom whitespace */}
+        <div className="main-content-spacer" aria-hidden="true" />
       </main>
       </div>
     </>

@@ -74,6 +74,7 @@ export default function SidebarEditor({ width = 576 }: SidebarEditorProps) {
     deleteProject,
     updateSectionTitle,
     updateMetadata,
+    setShowProjects,
   } = useResume();
 
   const [expertiseInput, setExpertiseInput] = useState("");
@@ -610,15 +611,34 @@ export default function SidebarEditor({ width = 576 }: SidebarEditorProps) {
 
         <CollapsibleSection title="Projects" icon={<Folder className="w-4 h-4 text-gray-600" />}>
           <div className="space-y-4">
-            <div className="mb-4 pb-3 border-b border-gray-200">
-              <label className="block text-xs font-medium text-gray-700 mb-1">Section Title</label>
-              <input
-                type="text"
-                value={resumeData.sectionTitles?.projects || "Key Technical Projects"}
-                onChange={(e) => updateSectionTitle("projects", e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+            {/* Toggle to show/hide projects section */}
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
+              <label className="text-sm font-medium text-gray-700">Show Projects Section</label>
+              <button
+                onClick={() => setShowProjects(!(resumeData.showProjects ?? true))}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  (resumeData.showProjects ?? true) ? 'bg-blue-600' : 'bg-gray-300'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    (resumeData.showProjects ?? true) ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
             </div>
+            
+            {(resumeData.showProjects ?? true) && (
+              <>
+                <div className="mb-4 pb-3 border-b border-gray-200">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Section Title</label>
+                  <input
+                    type="text"
+                    value={resumeData.sectionTitles?.projects || "Key Technical Projects"}
+                    onChange={(e) => updateSectionTitle("projects", e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
             {resumeData.projects.map((project) => (
               <div key={project.id} className="border border-gray-200 rounded-lg p-4 space-y-3 bg-white">
                 <div className="flex items-start justify-between">
@@ -649,15 +669,39 @@ export default function SidebarEditor({ width = 576 }: SidebarEditorProps) {
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Link Text (optional)</label>
+                    <input
+                      type="text"
+                      value={project.linkText || ""}
+                      onChange={(e) => updateProject(project.id, { linkText: e.target.value })}
+                      placeholder="e.g., View Project, Demo, GitHub"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">URL (optional)</label>
+                    <input
+                      type="url"
+                      value={project.link || ""}
+                      onChange={(e) => updateProject(project.id, { link: e.target.value })}
+                      placeholder="https://..."
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
               </div>
             ))}
-            <button
-              onClick={addProject}
-              className="w-full py-2 text-sm text-blue-600 border border-blue-200 rounded-md hover:bg-blue-50 flex items-center justify-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Add Project
-            </button>
+                <button
+                  onClick={addProject}
+                  className="w-full py-2 text-sm text-blue-600 border border-blue-200 rounded-md hover:bg-blue-50 flex items-center justify-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Project
+                </button>
+              </>
+            )}
           </div>
         </CollapsibleSection>
 

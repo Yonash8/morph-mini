@@ -28,6 +28,8 @@ interface ResumeContextType {
   updateSectionTitle: (section: keyof ResumeData["sectionTitles"], title: string) => void;
   importResumeData: (data: ResumeData) => void;
   updateMetadata: (updates: Partial<ResumeData["metadata"]>) => void;
+  setShowProjects: (show: boolean) => void;
+  setScale: (scale: number) => void;
 }
 
 const ResumeContext = createContext<ResumeContextType | undefined>(undefined);
@@ -66,6 +68,9 @@ export function ResumeProvider({ children }: { children: ReactNode }) {
         targetCompany: "",
         targetLink: "",
       };
+    }
+    if (data.scale === undefined) {
+      data.scale = 0.5; // Default to baseline
     }
     return data;
   });
@@ -290,6 +295,7 @@ export function ResumeProvider({ children }: { children: ReactNode }) {
         targetCompany: data.metadata?.targetCompany || "",
         targetLink: data.metadata?.targetLink || "",
       },
+      scale: data.scale !== undefined ? Math.max(0, Math.min(1, data.scale)) : 0.5,
     };
     setResumeData(normalizedData);
   };
@@ -305,6 +311,22 @@ export function ResumeProvider({ children }: { children: ReactNode }) {
         targetLink: prev.metadata?.targetLink || "",
         ...updates,
       },
+    }));
+  };
+
+  const setShowProjects = (show: boolean) => {
+    setResumeData((prev) => ({
+      ...prev,
+      showProjects: show,
+    }));
+  };
+
+  const setScale = (scale: number) => {
+    // Clamp scale between 0 and 1
+    const clampedScale = Math.max(0, Math.min(1, scale));
+    setResumeData((prev) => ({
+      ...prev,
+      scale: clampedScale,
     }));
   };
 
@@ -335,6 +357,8 @@ export function ResumeProvider({ children }: { children: ReactNode }) {
         updateSectionTitle,
         importResumeData,
         updateMetadata,
+        setShowProjects,
+        setScale,
       }}
     >
       {children}
