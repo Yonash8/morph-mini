@@ -55,13 +55,16 @@ export default function ResumePreview() {
       const currentSidebarWidth = parseFloat(wrapper.style.getPropertyValue('--fit-sidebar-width')) || 220;
       // If contentFontScale is provided, use it directly (for dynamic scaling)
       if (contentFontScale !== undefined) {
-        wrapper.style.setProperty("--fit-content-font-scale", contentFontScale.toString());
-        setContentFontScale(contentFontScale); // Update state for display
-        // Use provided spacing scale or default to 1
-        wrapper.style.setProperty("--fit-spacing-scale", (spacingScale ?? 1).toString());
-        wrapper.style.setProperty("--fit-line-height", "1.5");
-        // Preserve current sidebar width instead of resetting
-        wrapper.style.setProperty("--fit-sidebar-width", `${currentSidebarWidth}px`);
+        // Use requestAnimationFrame for smooth transition
+        requestAnimationFrame(() => {
+          wrapper.style.setProperty("--fit-content-font-scale", contentFontScale.toString());
+          setContentFontScale(contentFontScale); // Update state for display
+          // Use provided spacing scale or default to 1
+          wrapper.style.setProperty("--fit-spacing-scale", (spacingScale ?? 1).toString());
+          wrapper.style.setProperty("--fit-line-height", "1.5");
+          // Preserve current sidebar width instead of resetting
+          wrapper.style.setProperty("--fit-sidebar-width", `${currentSidebarWidth}px`);
+        });
         return;
       }
       
@@ -141,8 +144,26 @@ export default function ResumePreview() {
         const A4_HEIGHT_PX = (297 * 96) / 25.4; // ~1122.52px
         const wrapper = wrapperRef.current;
 
+        // Get current scale values
+        const currentFontScale = parseFloat(wrapper.style.getPropertyValue('--fit-content-font-scale')) || 
+                                 parseFloat(getComputedStyle(wrapper).getPropertyValue('--fit-content-font-scale')) || 1.0;
+        const currentSpacingScale = parseFloat(wrapper.style.getPropertyValue('--fit-spacing-scale')) || 
+                                    parseFloat(getComputedStyle(wrapper).getPropertyValue('--fit-spacing-scale')) || 1.0;
+
         // Function to measure content height
-        const measureHeight = () => {
+        const measureHeight = (atFontScale: number, atSpacingScale: number) => {
+          // Temporarily apply scales invisibly to measure
+          const origVisibility = wrapper.style.visibility;
+          wrapper.style.visibility = 'hidden';
+          
+          // Save original scale values
+          const origFontScale = wrapper.style.getPropertyValue('--fit-content-font-scale');
+          const origSpacingScale = wrapper.style.getPropertyValue('--fit-spacing-scale');
+          
+          // Apply measurement scales
+          wrapper.style.setProperty('--fit-content-font-scale', atFontScale.toString());
+          wrapper.style.setProperty('--fit-spacing-scale', atSpacingScale.toString());
+          
           // Save original styles
           const origOverflow = wrapper.style.overflow;
           const origHeight = wrapper.style.height;
@@ -170,9 +191,12 @@ export default function ResumePreview() {
             maxHeight = Math.max(maxHeight, asideRect.height);
           }
           
-          // Restore
+          // Restore original scales and styles
+          wrapper.style.setProperty('--fit-content-font-scale', origFontScale || '1');
+          wrapper.style.setProperty('--fit-spacing-scale', origSpacingScale || '1');
           wrapper.style.overflow = origOverflow;
           wrapper.style.height = origHeight;
+          wrapper.style.visibility = origVisibility;
           
           return maxHeight;
         };
@@ -185,52 +209,55 @@ export default function ResumePreview() {
               return;
             }
 
-            // Reset to base scale first
-            wrapper.style.setProperty('--fit-content-font-scale', '1');
-            wrapper.style.setProperty('--fit-spacing-scale', '1');
-            void wrapper.offsetHeight;
+            // Measure at base scale (1.0) invisibly
+            const naturalHeight = measureHeight(1.0, 1.0);
             
-            setTimeout(() => {
-              if (!wrapperRef.current) {
-                isAdjusting = false;
-                return;
-              }
-
-              // Measure at base scale
-              let currentHeight = measureHeight();
-              
-              let fontScale = 1.0;
-              let spacingScale = 1.0;
-              
-              // If content fits, we're done
-              if (currentHeight <= A4_HEIGHT_PX) {
+            let fontScale = 1.0;
+            let spacingScale = 1.0;
+            
+            // If content fits at base scale, we're done
+            if (naturalHeight <= A4_HEIGHT_PX) {
+              // Only update if scales are different to avoid unnecessary re-renders
+              if (Math.abs(currentFontScale - fontScale) > 0.001 || Math.abs(currentSpacingScale - spacingScale) > 0.001) {
                 applyFitLevel(0, fontScale, spacingScale);
-                isAdjusting = false;
-                return;
               }
-              
-              // Step 1: Reduce font scale until min 0.85
-              while (currentHeight > A4_HEIGHT_PX && fontScale > 0.85) {
-                fontScale -= 0.01;
-                wrapper.style.setProperty('--fit-content-font-scale', fontScale.toString());
-                void wrapper.offsetHeight;
-                currentHeight = measureHeight();
-              }
-              
-              // Step 2: If still overflowing, reduce spacing scale until min 0.5
-              while (currentHeight > A4_HEIGHT_PX && spacingScale > 0.5) {
-                spacingScale -= 0.02;
-                wrapper.style.setProperty('--fit-spacing-scale', spacingScale.toString());
-                void wrapper.offsetHeight;
-                currentHeight = measureHeight();
-              }
-              
-              // Apply final values
-              applyFitLevel(0, fontScale, spacingScale);
-              setFitLevel(0);
-              
               isAdjusting = false;
-            }, 100);
+              return;
+            }
+            
+            // Calculate required scale factors
+            // Step 1: Try reducing font scale first (min 0.85)
+            fontScale = Math.max(0.85, A4_HEIGHT_PX / naturalHeight);
+            
+            // Step 2: Measure with font scale to see if we need spacing reduction
+            const heightWithFontScale = measureHeight(fontScale, 1.0);
+            if (heightWithFontScale > A4_HEIGHT_PX) {
+              // Need to reduce spacing scale too
+              spacingScale = Math.max(0.5, A4_HEIGHT_PX / heightWithFontScale);
+            }
+            
+            // Only apply if scales are significantly different (larger threshold to reduce adjustments)
+            const fontDiff = Math.abs(currentFontScale - fontScale);
+            const spacingDiff = Math.abs(currentSpacingScale - spacingScale);
+            
+            // Use larger threshold (0.01 instead of 0.001) to reduce micro-adjustments
+            if (fontDiff > 0.01 || spacingDiff > 0.01) {
+              // Use requestIdleCallback for non-urgent updates to avoid blocking
+              if ('requestIdleCallback' in window) {
+                (window as any).requestIdleCallback(() => {
+                  applyFitLevel(0, fontScale, spacingScale);
+                  setFitLevel(0);
+                }, { timeout: 500 });
+              } else {
+                // Fallback for browsers without requestIdleCallback
+                setTimeout(() => {
+                  applyFitLevel(0, fontScale, spacingScale);
+                  setFitLevel(0);
+                }, 100);
+              }
+            }
+            
+            isAdjusting = false;
           });
         });
       } catch (error) {
@@ -283,9 +310,16 @@ export default function ResumePreview() {
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
           if (!isEditingRef.current && wrapperRef.current) {
-            adjustToFit();
+            // Use requestIdleCallback for smoother, non-blocking adjustments
+            if ('requestIdleCallback' in window) {
+              (window as any).requestIdleCallback(() => {
+                adjustToFit();
+              }, { timeout: 1000 });
+            } else {
+              adjustToFit();
+            }
           }
-        }, 2000);
+        }, 3000); // Increased debounce from 2000ms to 3000ms
       });
 
       if (wrapper && !isEditingRef.current) {
@@ -311,11 +345,24 @@ export default function ResumePreview() {
     
     const handleBlur = () => {
       isEditingRef.current = false;
+      // Delay observer recreation and adjustment to avoid immediate jumps
       setTimeout(() => {
         if (!isEditingRef.current) {
           createObserver();
+          // Delay adjustment after blur to let content settle
+          setTimeout(() => {
+            if (!isEditingRef.current && wrapperRef.current) {
+              if ('requestIdleCallback' in window) {
+                (window as any).requestIdleCallback(() => {
+                  adjustToFit();
+                }, { timeout: 500 });
+              } else {
+                adjustToFit();
+              }
+            }
+          }, 500);
         }
-      }, 1000);
+      }, 1500); // Increased delay from 1000ms to 1500ms
     };
     
     // Add event listeners to all contentEditable elements
@@ -527,6 +574,20 @@ export default function ResumePreview() {
           -webkit-user-select: text !important;
           -moz-user-select: text !important;
           -ms-user-select: text !important;
+          transition: font-size 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+          will-change: font-size;
+        }
+        
+        .resume-wrapper main,
+        .resume-wrapper aside {
+          transition: padding 0.4s cubic-bezier(0.4, 0, 0.2, 1), margin 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .resume-wrapper * {
+          transition: font-size 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+                      margin 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+                      padding 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+                      line-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .resume-wrapper * {
@@ -1151,9 +1212,15 @@ export default function ResumePreview() {
               updatePersonalInfo({ name: e.currentTarget.innerHTML || "" });
               setTimeout(() => {
                 if ((window as any).adjustToFit) {
-                  (window as any).adjustToFit();
+                  if ('requestIdleCallback' in window) {
+                    (window as any).requestIdleCallback(() => {
+                      (window as any).adjustToFit();
+                    }, { timeout: 800 });
+                  } else {
+                    (window as any).adjustToFit();
+                  }
                 }
-              }, 300);
+              }, 600);
             }}
             onKeyDown={(e) => {
               if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
@@ -1180,9 +1247,15 @@ export default function ResumePreview() {
               updatePersonalInfo({ summary: e.currentTarget.innerHTML || "" });
               setTimeout(() => {
                 if ((window as any).adjustToFit) {
-                  (window as any).adjustToFit();
+                  if ('requestIdleCallback' in window) {
+                    (window as any).requestIdleCallback(() => {
+                      (window as any).adjustToFit();
+                    }, { timeout: 800 });
+                  } else {
+                    (window as any).adjustToFit();
+                  }
                 }
-              }, 500);
+              }, 800);
             }}
             onKeyDown={(e) => {
               if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
@@ -1351,9 +1424,15 @@ export default function ResumePreview() {
                                     updateExperience(job.id, { bullets: newBullets });
                                     setTimeout(() => {
                                       if ((window as any).adjustToFit) {
-                                        (window as any).adjustToFit();
+                                        if ('requestIdleCallback' in window) {
+                                          (window as any).requestIdleCallback(() => {
+                                            (window as any).adjustToFit();
+                                          }, { timeout: 800 });
+                                        } else {
+                                          (window as any).adjustToFit();
+                                        }
                                       }
-                                    }, 500);
+                                    }, 800);
                                   }}
                                   onKeyDown={(e) => {
                                     if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
@@ -1436,9 +1515,15 @@ export default function ResumePreview() {
                     updateProject(project.id, { title: e.currentTarget.innerHTML || "" });
                     setTimeout(() => {
                       if ((window as any).adjustToFit) {
-                        (window as any).adjustToFit();
+                        if ('requestIdleCallback' in window) {
+                          (window as any).requestIdleCallback(() => {
+                            (window as any).adjustToFit();
+                          }, { timeout: 800 });
+                        } else {
+                          (window as any).adjustToFit();
+                        }
                       }
-                    }, 500);
+                    }, 800);
                   }}
                   onKeyDown={(e) => {
                     if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
@@ -1464,9 +1549,15 @@ export default function ResumePreview() {
                     updateProject(project.id, { description: e.currentTarget.innerHTML || "" });
                     setTimeout(() => {
                       if ((window as any).adjustToFit) {
-                        (window as any).adjustToFit();
+                        if ('requestIdleCallback' in window) {
+                          (window as any).requestIdleCallback(() => {
+                            (window as any).adjustToFit();
+                          }, { timeout: 800 });
+                        } else {
+                          (window as any).adjustToFit();
+                        }
                       }
-                    }, 500);
+                    }, 800);
                   }}
                   onKeyDown={(e) => {
                     if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {

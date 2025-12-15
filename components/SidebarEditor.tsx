@@ -196,38 +196,6 @@ export default function SidebarEditor({ width = 576 }: SidebarEditorProps) {
           </div>
         </CollapsibleSection>
 
-        <CollapsibleSection title="Personal Info" icon={<User className="w-4 h-4 text-gray-600" />} defaultOpen>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">Name</label>
-              <input
-                type="text"
-                value={resumeData.personalInfo.name}
-                onChange={(e) => updatePersonalInfo({ name: e.target.value })}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition-colors"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">Role</label>
-              <input
-                type="text"
-                value={resumeData.personalInfo.role}
-                onChange={(e) => updatePersonalInfo({ role: e.target.value })}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition-colors"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">Summary</label>
-              <textarea
-                value={resumeData.personalInfo.summary}
-                onChange={(e) => updatePersonalInfo({ summary: e.target.value })}
-                rows={6}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition-colors resize-none"
-              />
-            </div>
-          </div>
-        </CollapsibleSection>
-
         <CollapsibleSection title="Contact" icon={<User className="w-4 h-4 text-gray-600" />}>
           <div className="space-y-4">
             <div>
@@ -268,17 +236,6 @@ export default function SidebarEditor({ width = 576 }: SidebarEditorProps) {
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-          </div>
-        </CollapsibleSection>
-
-        <CollapsibleSection title="Summary" icon={<FileText className="w-4 h-4 text-gray-600" />}>
-          <div>
-            <textarea
-              value={resumeData.personalInfo.summary}
-              onChange={(e) => updatePersonalInfo({ summary: e.target.value })}
-              rows={8}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
           </div>
         </CollapsibleSection>
 
